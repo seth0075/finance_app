@@ -4,10 +4,24 @@ from pathlib import Path
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from finance_app.core.database import initialize_database
+from finance_app.features.tasks.viewmodel import TaskViewModel
+
 
 def main():
     app = QGuiApplication(sys.argv)
+
+    initialize_database()
+
     engine = QQmlApplicationEngine()
+
+    task_viewmodel = TaskViewModel()
+
+    task_viewmodel = TaskViewModel()
+
+    engine.setInitialProperties({
+        "taskViewModel": task_viewmodel
+    })
 
     qml_file = Path(__file__).parent / "ui" / "Main.qml"
 

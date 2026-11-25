@@ -1,11 +1,16 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
 import "components"
+import "pages"
 
 ApplicationWindow {
     id: window
+
+    required property QtObject taskViewModel
 
     visible: true
     width: 1200
@@ -33,22 +38,47 @@ ApplicationWindow {
             }
         }
 
+        Component {
+            id: dashboardPage
+            Dashboard {}
+        }
+
+        Component {
+            id: financesPage
+            Finances {}
+        }
+
+        Component {
+            id: wishlistPage
+            Wishlist {}
+        }
+
+        Component {
+            id: tasksPage
+
+            Tasks {
+                taskViewModel: window.taskViewModel
+            }
+        }
+
         Loader {
+             id: pageLoader
+
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            source: {
+            sourceComponent: {
                 switch (window.currentPage) {
                     case "Dashboard":
-                        return "pages/Dashboard.qml"
+                        return dashboardPage
                     case "Finances":
-                        return "pages/Finances.qml"
+                        return financesPage
                     case "Wishlist":
-                        return "pages/Wishlist.qml"
+                        return wishlistPage
                     case "Tasks":
-                        return "pages/Tasks.qml"
+                        return tasksPage
                     default:
-                        return ""
+                        return null
                 }
             }
         }
