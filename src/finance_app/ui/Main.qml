@@ -6,20 +6,23 @@ import QtQuick.Layouts
 
 import "components"
 import "pages"
+import "themes"
 
 ApplicationWindow {
     id: window
 
     required property QtObject taskViewModel
+    required property QtObject calendarViewModel
 
     visible: true
     width: 1200
     height: 800
-    minimumWidth: 800
-    minimumHeight: 500
+    minimumWidth: 1000
+    minimumHeight: 720
 
     title: "Personal Dashboard"
-    color: "#15171C"
+    color: Theme.background
+    font.family: Theme.fontFamily
 
     property string currentPage: "Dashboard"
 
@@ -54,6 +57,14 @@ ApplicationWindow {
         }
 
         Component {
+            id: calendarPage
+            CalendarPage {
+                taskViewModel: window.taskViewModel
+                calendarViewModel: window.calendarViewModel
+            }
+        }
+
+        Component {
             id: tasksPage
 
             Tasks {
@@ -77,6 +88,8 @@ ApplicationWindow {
                         return wishlistPage
                     case "Tasks":
                         return tasksPage
+                    case "Calendar":
+                        return calendarPage
                     default:
                         return null
                 }

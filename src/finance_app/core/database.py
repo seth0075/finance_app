@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
@@ -24,6 +24,14 @@ class Base(DeclarativeBase):
 
 
 def initialize_database():
+    from finance_app.features.calendar.models import CalendarEvent as CalendarEvent
     from finance_app.features.tasks.models import Task
 
+    inspector = inspect(engine)
+    if inspector.has_table("calendar_events"):
+        columns = {column["name"] for column in inspector.get_columns("calendar_events")}
+        if not {"calendar_id", "recurrence", "recurrence_until"}.issubset(columns):
+            raise RuntimeError(
+                "Calendar database needs upgrading. Run: uv run python -m alembic upgrade head"
+            )
     Base.metadata.create_all(bind=engine)
