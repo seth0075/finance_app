@@ -1,0 +1,47 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Testing and linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build output
+build/
+dist/
+*.egg-info/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Personal application data
+data/
+backups/
+logs/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Operating system files
+Thumbs.db
+.DS_Store
+
+# Local Qt language server configuration
+.qmlls.ini
