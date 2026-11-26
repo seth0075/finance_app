@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-import "../themes"
+import ".."
+import "../../themes"
 
 Dialog {
     id: root
@@ -15,7 +16,7 @@ Dialog {
     property string originalStartDate: ""
     property string originalRepeat: "none"
     property string originalUntil: ""
-    readonly property var eventCalendars: calendarViewModel.calendars.filter(calendar => calendar.id !== "tasks")
+    readonly property var eventCalendars: calendarViewModel.calendars.filter(calendar => calendar.id !== "tasks" && !calendar.readOnly)
     signal deleted()
 
     modal: true

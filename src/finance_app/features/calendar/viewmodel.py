@@ -6,7 +6,13 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from sqlalchemy import delete, select
 
 from finance_app.core.database import SessionLocal
-from finance_app.features.calendar.models import Calendar, CalendarEvent, EventException
+from finance_app.features.calendar.models import (
+    Calendar,
+    CalendarEvent,
+    EventException,
+    HiddenCalendar,
+)
+from finance_app.integrations.google_calendar.models import GoogleCalendar, GoogleEvent
 
 
 def occurrence_start(start, recurrence, index):
@@ -149,10 +155,27 @@ class CalendarViewModel(QObject):
 
     def _refresh(self):
         with SessionLocal() as session:
+            hidden = set(session.scalars(select(HiddenCalendar.calendar_id)))
             self._calendars = [
-                {"id": item.id, "name": item.name, "color": item.color}
+                {
+                    "id": item.id,
+                    "name": item.name,
+                    "color": item.color,
+                    "readOnly": False,
+                    "visible": item.id not in hidden,
+                }
                 for item in session.scalars(select(Calendar).order_by(Calendar.name))
             ]
+            self._calendars.extend(
+                {
+                    "id": "google:" + item.id,
+                    "name": item.name,
+                    "color": item.color,
+                    "readOnly": True,
+                    "visible": "google:" + item.id not in hidden,
+                }
+                for item in session.scalars(select(GoogleCalendar).order_by(GoogleCalendar.name))
+            )
             self._events = [
                 {
                     "id": item.id,
@@ -176,6 +199,24 @@ class CalendarViewModel(QObject):
                     )
                 )
             ]
+            self._events.extend(
+                {
+                    "id": "google:" + item.calendar_id + ":" + item.id,
+                    "title": item.title,
+                    "start": item.starts_at.isoformat(),
+                    "end": item.ends_at.isoformat(),
+                    "startDate": item.starts_at.date().isoformat(),
+                    "endDate": item.ends_at.date().isoformat(),
+                    "startTime": item.starts_at.strftime("%H:%M"),
+                    "endTime": item.ends_at.strftime("%H:%M"),
+                    "allDay": item.all_day,
+                    "calendarId": "google:" + item.calendar_id,
+                    "recurrence": "none",
+                    "until": "",
+                    "readOnly": True,
+                }
+                for item in session.scalars(select(GoogleEvent))
+            )
             self._exceptions = [
                 {
                     "eventId": item.event_id,
@@ -206,6 +247,7 @@ class CalendarViewModel(QObject):
     def occurrencesForDate(self, day_string):
         day = date.fromisoformat(day_string)
         colors = {item["id"]: item["color"] for item in self._calendars}
+        visible = {item["id"] for item in self._calendars if item["visible"]}
         exceptions = {
             (item["eventId"], item["occurrenceDate"]): item for item in self._exceptions
         }
@@ -214,7 +256,7 @@ class CalendarViewModel(QObject):
         for event in self._events:
             for start, end in occurrences_on(event, day):
                 key = (event["id"], start.date().isoformat())
-                if key not in exceptions:
+                if key not in exceptions and event["calendarId"] in visible:
                     results.append(
                         self._display(
                             event,
@@ -228,7 +270,7 @@ class CalendarViewModel(QObject):
                         )
                     )
         for exception in self._exceptions:
-            if exception["cancelled"]:
+            if exception["cancelled"] or exception["calendarId"] not in visible:
                 continue
             start, end = (
                 datetime.fromisoformat(exception["start"]),
@@ -275,6 +317,20 @@ class CalendarViewModel(QObject):
             "occurrenceDate": occurrence_date,
         }
 
+    @Slot(str, bool, result=str)
+    def setCalendarVisible(self, calendar_id, visible):
+        if not any(item["id"] == calendar_id for item in self._calendars):
+            return "This calendar no longer exists."
+        with SessionLocal() as session:
+            hidden = session.get(HiddenCalendar, calendar_id)
+            if visible and hidden is not None:
+                session.delete(hidden)
+            elif not visible and hidden is None:
+                session.add(HiddenCalendar(calendar_id=calendar_id))
+            session.commit()
+        self._refresh()
+        return ""
+
     @Slot(str, str, str, result=str)
     def saveCalendar(self, calendar_id, name, color):
         name = name.strip()
@@ -314,6 +370,9 @@ class CalendarViewModel(QObject):
             )
             if count <= 1:
                 return "Keep at least one event calendar."
+            hidden = session.get(HiddenCalendar, calendar_id)
+            if hidden is not None:
+                session.delete(hidden)
             ids = list(
                 session.scalars(
                     select(CalendarEvent.id).where(

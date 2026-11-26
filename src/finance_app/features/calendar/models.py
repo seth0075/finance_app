@@ -1,7 +1,15 @@
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from finance_app.core.database import Base
@@ -15,6 +23,12 @@ class Calendar(Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     color: Mapped[str] = mapped_column(String(7), nullable=False)
+
+
+class HiddenCalendar(Base):
+    __tablename__ = "hidden_calendars"
+
+    calendar_id: Mapped[str] = mapped_column(Text, primary_key=True)
 
 
 class CalendarEvent(Base):

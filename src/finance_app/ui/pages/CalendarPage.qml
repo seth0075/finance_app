@@ -5,6 +5,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import "../components"
+import "../components/calendar"
 import "../themes"
 
 Item {
@@ -12,6 +13,7 @@ Item {
     objectName: "calendarPage"
     required property QtObject taskViewModel
     required property QtObject calendarViewModel
+    property QtObject googleViewModel
     property date selectedDate: new Date()
     property string viewMode: "Month"
     readonly property string selectedKey: dateKey(selectedDate)
@@ -47,7 +49,7 @@ Item {
         const tasksCalendar = calendars.find(calendar => calendar.id === "tasks");
         const revision = calendarViewModel.events;
         for (const task of taskViewModel.tasks) {
-            if (task.dueDate === key)
+            if (tasksCalendar.visible && task.dueDate === key)
                 items.push({ kind: "task", title: task.title, color: tasksCalendar.color,
                     completed: task.completed, time: "Task" });
         }
@@ -157,6 +159,15 @@ Item {
             }
         }
 
+        Label {
+            Layout.fillWidth: true
+            visible: root.googleViewModel !== null && (root.googleViewModel.connected || root.googleViewModel.hasCache)
+            text: root.googleViewModel ? "Google (read-only): " + root.googleViewModel.cacheCoverage : ""
+            color: Theme.textSecondary
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+        }
+
         RowLayout {
             Layout.fillWidth: true
             NavButton { text: "‹"; Accessible.name: "Previous"; onClicked: root.navigate(-1) }
@@ -198,13 +209,17 @@ Item {
             border.color: Theme.border
             clip: true
 
-            ColumnLayout {
+            GridLayout {
                 anchors.fill: parent
                 anchors.margins: 16
-                spacing: 8
+                columns: root.viewMode === "Month" ? 2 : 1
+                columnSpacing: 16
+                rowSpacing: 8
 
                 DayOfWeekRow {
                     visible: root.viewMode !== "Day"
+                    Layout.row: 0
+                    Layout.column: 0
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     locale: monthGrid.locale
@@ -224,8 +239,11 @@ Item {
                     id: monthGrid
                     objectName: "monthGrid"
                     visible: root.viewMode === "Month"
+                    Layout.row: 1
+                    Layout.column: 0
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(180, parent.height * 0.52)
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: parent.width * 0.57
                     month: root.selectedDate.getMonth()
                     year: root.selectedDate.getFullYear()
                     onClicked: function(day) { root.selectedDate = day; }
@@ -254,6 +272,7 @@ Item {
                                     model: Math.min(5, dayCell.entries.length)
                                     delegate: Rectangle {
                                         required property int index
+                                        objectName: "calendarEntryDot"
                                         width: 6
                                         height: 6
                                         radius: 3
@@ -268,6 +287,8 @@ Item {
 
                 RowLayout {
                     visible: root.viewMode === "Week"
+                    Layout.row: 1
+                    Layout.column: 0
                     Layout.fillWidth: true
                     spacing: 4
                     Repeater {
@@ -314,6 +335,12 @@ Item {
                 }
 
                 Label {
+                    objectName: "calendarSelectedDate"
+                    Layout.row: root.viewMode === "Month" ? 0 : 2
+                    Layout.column: root.viewMode === "Month" ? 1 : 0
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                     text: Qt.formatDate(root.selectedDate, "dddd, MMMM d")
                     color: Theme.textPrimary
                     font.family: Theme.fontFamily
@@ -324,8 +351,13 @@ Item {
 
                 ListView {
                     objectName: "calendarEntries"
+                    Layout.row: root.viewMode === "Month" ? 1 : 3
+                    Layout.column: root.viewMode === "Month" ? 1 : 0
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: root.viewMode === "Month" ? Math.min(360, parent.width * 0.43) : -1
+                    Layout.maximumWidth: root.viewMode === "Month" ? 360 : Infinity
                     clip: true
                     spacing: 4
                     model: root.entriesFor(root.selectedDate)
@@ -336,7 +368,7 @@ Item {
                         required property var modelData
                         width: ListView.view.width
                         height: 46
-                        enabled: modelData.kind === "event"
+                        enabled: modelData.kind === "event" && !modelData.event.readOnly
                         onClicked: {
                             if (modelData.event.recurrence === "none")
                                 eventDialog.openEdit(modelData.event, "series");
@@ -368,7 +400,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: entry.modelData.kind === "event" ? "Edit" : "Task"
+                                text: entry.modelData.kind === "event" ? (entry.modelData.event.readOnly ? "Google · read-only" : "Edit") : "Task"
                                 color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSmall
                             }

@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
-import "../themes"
+import ".."
+import "../../themes"
 
 Rectangle {
     id: root

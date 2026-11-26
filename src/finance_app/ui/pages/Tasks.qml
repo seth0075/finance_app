@@ -5,6 +5,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 import "../components"
+import "../components/tasks"
 import "../themes"
 
 Item {

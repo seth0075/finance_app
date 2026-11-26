@@ -1,4 +1,5 @@
 import os
+from importlib import import_module
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect
@@ -27,11 +28,19 @@ def initialize_database():
     from finance_app.features.calendar.models import CalendarEvent as CalendarEvent
     from finance_app.features.tasks.models import Task
 
+    import_module("finance_app.integrations.google_calendar.models")
+    import_module("finance_app.features.finances.models")
     inspector = inspect(engine)
     if inspector.has_table("calendar_events"):
         columns = {column["name"] for column in inspector.get_columns("calendar_events")}
         if not {"calendar_id", "recurrence", "recurrence_until"}.issubset(columns):
             raise RuntimeError(
                 "Calendar database needs upgrading. Run: uv run python -m alembic upgrade head"
+            )
+    if inspector.has_table("finance_categories"):
+        columns = {column["name"] for column in inspector.get_columns("finance_categories")}
+        if "color" not in columns:
+            raise RuntimeError(
+                "Finance database needs upgrading. Run: uv run python -m alembic upgrade head"
             )
     Base.metadata.create_all(bind=engine)

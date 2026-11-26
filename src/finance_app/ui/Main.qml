@@ -13,6 +13,9 @@ ApplicationWindow {
 
     required property QtObject taskViewModel
     required property QtObject calendarViewModel
+    property QtObject googleViewModel
+    property QtObject financeViewModel
+    property QtObject plaidViewModel
 
     visible: true
     width: 1200
@@ -48,7 +51,7 @@ ApplicationWindow {
 
         Component {
             id: financesPage
-            Finances {}
+            Finances { financeViewModel: window.financeViewModel; plaidViewModel: window.plaidViewModel }
         }
 
         Component {
@@ -61,7 +64,13 @@ ApplicationWindow {
             CalendarPage {
                 taskViewModel: window.taskViewModel
                 calendarViewModel: window.calendarViewModel
+                googleViewModel: window.googleViewModel
             }
+        }
+
+        Component {
+            id: settingsPage
+            Settings { googleViewModel: window.googleViewModel; plaidViewModel: window.plaidViewModel }
         }
 
         Component {
@@ -90,6 +99,8 @@ ApplicationWindow {
                         return tasksPage
                     case "Calendar":
                         return calendarPage
+                    case "Settings":
+                        return settingsPage
                     default:
                         return null
                 }

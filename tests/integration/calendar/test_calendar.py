@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from finance_app.core import database
 from finance_app.core.database import Base
 from finance_app.features.calendar import viewmodel
+from finance_app.features.calendar.models import HiddenCalendar
 
 
 @pytest.fixture
@@ -66,6 +67,33 @@ def test_calendar_management_and_colors(vm):
     assert all(
         item["id"] != "default" for item in viewmodel.CalendarViewModel().calendars
     )
+
+
+def test_hidden_calendars_persist_and_filter_moved_occurrences(vm):
+    assert vm.saveCalendar("", "Work", "#123456") == ""
+    work_id = next(item["id"] for item in vm.calendars if item["name"] == "Work")
+    assert save(vm, recurrence="monthly") == ""
+    event_id = vm.events[0]["id"]
+    assert save(
+        vm, start="2024-02-29", end="2024-02-29", recurrence="monthly",
+        event_id=event_id, scope="occurrence", occurrence="2024-02-29",
+        calendar=work_id,
+    ) == ""
+    assert vm.setCalendarVisible("default", False) == ""
+    assert vm.setCalendarVisible("tasks", False) == ""
+    assert vm.occurrencesForDate("2024-01-31") == []
+    assert len(vm.occurrencesForDate("2024-02-29")) == 1
+    reopened = viewmodel.CalendarViewModel()
+    assert {item["id"] for item in reopened.calendars if not item["visible"]} == {"default", "tasks"}
+    assert reopened.setCalendarVisible(work_id, False) == ""
+    assert reopened.occurrencesForDate("2024-02-29") == []
+    assert reopened.setCalendarVisible("default", True) == ""
+    assert len(reopened.occurrencesForDate("2024-01-31")) == 1
+    assert reopened.setCalendarVisible("missing", False)
+    assert reopened.deleteCalendar(work_id) == ""
+    assert len(reopened.events) == 1
+    with viewmodel.SessionLocal() as session:
+        assert session.get(HiddenCalendar, work_id) is None
 
 
 @pytest.mark.parametrize(

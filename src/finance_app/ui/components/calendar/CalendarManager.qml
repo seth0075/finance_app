@@ -3,7 +3,8 @@ import QtQuick.Controls.Basic
 import QtQuick.Dialogs as QuickDialogs
 import QtQuick.Layouts
 
-import "../themes"
+import ".."
+import "../../themes"
 
 Dialog {
     id: root
@@ -93,7 +94,7 @@ Dialog {
             font.bold: true
         }
         Label {
-            text: "Select a calendar to edit it; select it again to create a new one."
+            text: "Use the circles to show or hide calendars. Select a local calendar to edit it; select it again to create a new one. Google calendars are read-only."
             color: Theme.textSecondary
             font.pixelSize: Theme.fontSmall
             Layout.fillWidth: true
@@ -112,8 +113,10 @@ Dialog {
                 required property var modelData
                 objectName: "calendarRow" + modelData.id
                 width: ListView.view.width
-                height: 36
+                height: 48
                 onClicked: {
+                    if (modelData.readOnly)
+                        return;
                     if (root.editingId === modelData.id)
                         root.openNew();
                     else
@@ -121,13 +124,25 @@ Dialog {
                 }
                 background: Rectangle {
                     radius: Theme.radiusSmall
-                    color: root.editingId === row.modelData.id || row.hovered ? Theme.surfaceHover : Theme.inputBackground
+                    color: root.editingId === row.modelData.id || (row.hovered && !row.modelData.readOnly) ? Theme.surfaceHover : Theme.inputBackground
                 }
                 contentItem: RowLayout {
                     spacing: 10
+                    ThemedCheckBox {
+                        objectName: "calendarVisibility" + row.modelData.id
+                        checked: row.modelData.visible
+                        Accessible.name: "Show " + row.modelData.name
+                        onClicked: {
+                            const message = root.calendarViewModel.setCalendarVisible(row.modelData.id, checked);
+                            if (message.length) {
+                                error.text = message;
+                                checked = Qt.binding(function() { return row.modelData.visible; });
+                            }
+                        }
+                    }
                     Rectangle { width: 12; height: 12; radius: 6; color: row.modelData.color }
-                    Label { text: row.modelData.name; color: Theme.textPrimary; Layout.fillWidth: true }
-                    Label { text: row.modelData.id === "tasks" ? "Tasks" : ""; color: Theme.textSecondary }
+                    Label { text: row.modelData.name; color: Theme.textPrimary; Layout.fillWidth: true; elide: Text.ElideRight }
+                    Label { text: row.modelData.readOnly ? "Google · read-only" : row.modelData.id === "tasks" ? "Tasks" : ""; color: Theme.textSecondary }
                 }
             }
         }

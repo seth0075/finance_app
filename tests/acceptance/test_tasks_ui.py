@@ -24,6 +24,7 @@ from finance_app.core.database import Base
 from finance_app.features.calendar import viewmodel as calendar_module
 from finance_app.features.tasks import repository
 from finance_app.features.tasks.viewmodel import TaskViewModel as RealTaskViewModel
+from tests.acceptance.ui_helpers import click, find_item, find_items
 
 
 class TaskViewModel(QObject):
@@ -71,29 +72,6 @@ class TaskViewModel(QObject):
     def updateTask(self, task_id, title, description, due_date, priority):
         self.updated.append((task_id, title, description, due_date, priority))
         return True
-
-
-def find_item(item, name, visible=False):
-    if item.objectName() == name and (not visible or item.isVisible()):
-        return item
-    for child in item.childItems():
-        found = find_item(child, name, visible)
-        if found is not None:
-            return found
-    return None
-
-
-def find_items(item, name):
-    items = [item] if item.objectName() == name and item.isVisible() else []
-    for child in item.childItems():
-        items.extend(find_items(child, name))
-    return items
-
-
-def click(window, item):
-    center = item.mapToScene(QPointF(item.width() / 2, item.height() / 2))
-    QTest.mouseClick(window, Qt.MouseButton.LeftButton, pos=center.toPoint())
-    QTest.qWait(50)
 
 
 def test_task_controls_and_new_dialog(monkeypatch):
@@ -244,6 +222,36 @@ def test_calendar_navigation_and_event_creation(monkeypatch):
     assert page is not None, "\n".join(warnings)
     entries = window.findChild(QObject, "calendarEntries")
     assert entries is not None and entries.property("count") == 1
+    month = find_item(window.contentItem(), "monthGrid", visible=True)
+    assert month.height() > month.width() * 0.8
+    assert month.height() > month.parentItem().height() * 0.8
+    assert entries.mapToScene(QPointF()).x() >= month.mapToScene(QPointF()).x() + month.width()
+    assert find_items(window.contentItem(), "calendarEntryDot")
+    click(window, find_item(window.contentItem(), "manageCalendarsButton"))
+    toggle = find_item(window.contentItem(), "calendarVisibilitytasks", visible=True)
+    assert toggle is not None and toggle.property("checked")
+    click(window, toggle)
+    assert entries.property("count") == 0
+    assert not find_items(window.contentItem(), "calendarEntryDot")
+    assert find_item(window.contentItem(), "calendarName", visible=True).property("text") == ""
+    manager = window.findChild(QObject, "calendarManager")
+    assert QMetaObject.invokeMethod(manager, "close")
+    for mode in ("Day", "Week", "Month"):
+        click(window, find_item(window.contentItem(), "calendar" + mode + "Button"))
+        assert entries.property("count") == 0
+    window.setProperty("currentPage", "Dashboard")
+    window.setProperty("currentPage", "Calendar")
+    QTest.qWait(100)
+    page = window.findChild(QObject, "calendarPage")
+    entries = window.findChild(QObject, "calendarEntries")
+    assert entries.property("count") == 0
+    click(window, find_item(window.contentItem(), "manageCalendarsButton"))
+    toggle = find_item(window.contentItem(), "calendarVisibilitytasks", visible=True)
+    assert not toggle.property("checked")
+    click(window, toggle)
+    assert entries.property("count") == 1
+    manager = window.findChild(QObject, "calendarManager")
+    assert QMetaObject.invokeMethod(manager, "close")
     button = find_item(window.contentItem(), "newEventButton")
     assert button is not None
     click(window, button)
@@ -255,6 +263,14 @@ def test_calendar_navigation_and_event_creation(monkeypatch):
     click(window, save)
     assert len(calendar.events) == 1
     assert entries.property("count") == 2
+    click(window, find_item(window.contentItem(), "manageCalendarsButton"))
+    toggle = find_item(window.contentItem(), "calendarVisibilitydefault", visible=True)
+    click(window, toggle)
+    assert entries.property("count") == 1
+    toggle = find_item(window.contentItem(), "calendarVisibilitydefault", visible=True)
+    click(window, toggle)
+    assert entries.property("count") == 2
+    assert QMetaObject.invokeMethod(window.findChild(QObject, "calendarManager"), "close")
     task = repo.get_all()[0]
     repo.update(task["id"], "Moved task", "", date.today() + timedelta(days=1), 3)
     tasks._refresh_tasks()
@@ -281,6 +297,12 @@ def test_calendar_navigation_and_event_creation(monkeypatch):
         click(window, button)
         assert page.property("viewMode") == mode
         assert entries.property("count") == 1
+        if mode == "Month":
+            month = find_item(window.contentItem(), "monthGrid", visible=True)
+            assert entries.mapToScene(QPointF()).x() >= month.mapToScene(QPointF()).x() + month.width()
+        else:
+            heading = find_item(window.contentItem(), "calendarSelectedDate", visible=True)
+            assert abs(entries.mapToScene(QPointF()).x() - heading.mapToScene(QPointF()).x()) < 1
 
     start = date.today()
     end = start + timedelta(days=2)

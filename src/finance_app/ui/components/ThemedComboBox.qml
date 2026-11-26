@@ -14,6 +14,7 @@ ComboBox {
 
     contentItem: Text {
         text: control.displayText
+        textFormat: Text.PlainText
         color: control.enabled ? Theme.textPrimary : Theme.textMuted
         font: control.font
         verticalAlignment: Text.AlignVCenter
@@ -47,6 +48,7 @@ ComboBox {
         contentItem: Text {
             objectName: "comboOptionText"
             text: control.textRole ? option.modelData[control.textRole] : option.modelData
+            textFormat: Text.PlainText
             color: Theme.textPrimary
             font: control.font
             verticalAlignment: Text.AlignVCenter

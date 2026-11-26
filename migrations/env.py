@@ -1,4 +1,5 @@
 from logging.config import fileConfig
+from importlib import import_module
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -8,6 +9,9 @@ from alembic import context
 from finance_app.core.database import Base, DATABASE_URL
 from finance_app.features.calendar.models import CalendarEvent as CalendarEvent
 from finance_app.features.tasks.models import Task
+
+import_module("finance_app.integrations.google_calendar.models")
+import_module("finance_app.features.finances.models")
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

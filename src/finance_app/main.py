@@ -7,7 +7,10 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from finance_app.core.database import initialize_database
 from finance_app.features.calendar.viewmodel import CalendarViewModel
+from finance_app.features.finances.viewmodel import FinanceViewModel
 from finance_app.features.tasks.viewmodel import TaskViewModel
+from finance_app.integrations.google_calendar.viewmodel import GoogleCalendarViewModel
+from finance_app.integrations.plaid.viewmodel import PlaidViewModel
 
 
 def main():
@@ -19,10 +22,17 @@ def main():
 
     task_viewmodel = TaskViewModel()
     calendar_viewmodel = CalendarViewModel()
+    google_viewmodel = GoogleCalendarViewModel()
+    finance_viewmodel = FinanceViewModel()
+    plaid_viewmodel = PlaidViewModel(finance_viewmodel)
+    google_viewmodel.cacheChanged.connect(calendar_viewmodel._refresh)
 
     engine.setInitialProperties({
         "taskViewModel": task_viewmodel,
         "calendarViewModel": calendar_viewmodel,
+        "googleViewModel": google_viewmodel,
+        "financeViewModel": finance_viewmodel,
+        "plaidViewModel": plaid_viewmodel,
     })
 
     qml_file = Path(__file__).parent / "ui" / "Main.qml"
